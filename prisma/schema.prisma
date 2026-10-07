@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  AGENCY_ADMIN
+  ACCOUNT_MANAGER
+  CAMPAIGN_MANAGER
+  OPERATIONS_MANAGER
+  FINANCE_MANAGER
+  FIELD_MANAGER
+  AGENCY_STAFF
+  CLIENT
+  MEDIA_OWNER
+  VENDOR
+  FIELD_AGENT
+  PLATFORM_ADMIN
+}
+
+enum TenantType {
+  AGENCY
+  MEDIA_OWNER
+  VENDOR
+  CLIENT
+  FIELD_UNIT
+}
+
+enum EmailTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+model Tenant {
+  id          String      @id @default(cuid())
+  name        String
+  type        TenantType
+  licenseNumber String?
+  city        String?
+  country     String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  users       User[]
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  name             String
+  role             RoleName
+  title            String?
+  avatarUrl        String?
+  emailVerifiedAt  DateTime?
+  mfaEnabled       Boolean   @default(false)
+  mfaSecret        String?
+  mfaBackupCodes   Json?
+  tenantId         String?
+  status           String    @default("active")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  tenant           Tenant?   @relation(fields: [tenantId], references: [id])
+  refreshTokens    RefreshToken[]
+  emailTokens      EmailToken[]
+  auditLogs        AuditLog[]
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  tokenHash   String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  userAgent   String?
+  ip          String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model EmailToken {
+  id          String          @id @default(cuid())
+  userId      String
+  type        EmailTokenType
+  tokenHash   String
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id])
+}
+
+model RolePermission {
+  id         String @id @default(cuid())
+  role       String
+  permission String
+  @@unique([role, permission])
+}
+
+model Metro {
+  id          String @id @default(cuid())
+  code        String @unique
+  name        String
+  country     String
+  currency    String
+  currencySymbol String
+  sitesCount  Int @default(0)
+  crewsCount  Int @default(0)
+  complianceRate Float @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String @id @default(cuid())
+  actorId     String?
+  actorRole   String?
+  action      String
+  entity      String
+  entityId    String?
+  metadata    Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+  actor       User? @relation(fields: [actorId], references: [id])
+}
